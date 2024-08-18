@@ -1,7 +1,7 @@
 import os
 import json
 import csv
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from google.cloud import storage
 from urllib.request import urlopen
 from urllib.error import HTTPError
@@ -62,33 +62,20 @@ def extract_and_write_csv(data):
 
     return ipv4_filename, ipv6_filename, ipv4_url_filename, ipv6_url_filename
 
-# Function to upload files to Google Cloud Storage
-def upload_to_gcloud(local_filename, cloud_filename):
+# Function to upload files to Google Cloud Storage and make them public
+def upload_to_gcloud_and_make_public(local_filename, cloud_filename):
     try:
         client = storage.Client()  # Using default credentials
         bucket = client.bucket(BUCKET_NAME)
         blob = bucket.blob(cloud_filename)
         logging.info(f"Uploading {local_filename} to bucket {BUCKET_NAME}/{cloud_filename}...")
         blob.upload_from_filename(local_filename)
-        logging.info(f"Uploaded {local_filename} to {BUCKET_NAME}/{cloud_filename}.")
-        return blob
+        blob.make_public()  # Make the file public
+        logging.info(f"Uploaded and made public {local_filename} at {blob.public_url}")
     except google.api_core.exceptions.NotFound as e:
         handle_error(f"CSV Upload Failed: Bucket not found: {str(e)}")
     except Exception as e:
         handle_error(f"CSV Upload Failed: An error occurred during upload: {str(e)}")
-
-# Function to create a signed URL for a file
-def create_signed_url(blob):
-    try:
-        url = blob.generate_signed_url(
-            version="v4",
-            expiration=timedelta(hours=24),  # Set the expiration as needed
-            method="GET"
-        )
-        logging.info(f"Generated signed URL: {url}")
-        return url
-    except Exception as e:
-        handle_error(f"Signed URL Creation Failed: Failed to create signed URL: {str(e)}")
 
 # Main process
 def process_ip_ranges():
@@ -97,21 +84,15 @@ def process_ip_ranges():
         logging.info(f"Data published: {data.get('creationTime')}")
         ipv4_filename, ipv6_filename, ipv4_url_filename, ipv6_url_filename = extract_and_write_csv(data)
         
-        # Upload the latest IP files to the URLs folder
-        ipv4_blob = upload_to_gcloud(ipv4_filename, ipv4_url_filename)
-        ipv6_blob = upload_to_gcloud(ipv6_filename, ipv6_url_filename)
+        # Upload the latest IP files to the URLs folder and make them public
+        upload_to_gcloud_and_make_public(ipv4_filename, ipv4_url_filename)
+        upload_to_gcloud_and_make_public(ipv6_filename, ipv6_url_filename)
 
         # Upload copies of the IP files to the logs folders with date suffixes
-        upload_to_gcloud(ipv4_filename, f"{IPV4_FOLDER}{os.path.basename(ipv4_filename)}")
-        upload_to_gcloud(ipv6_filename, f"{IPV6_FOLDER}{os.path.basename(ipv6_filename)}")
+        upload_to_gcloud_and_make_public(ipv4_filename, f"{IPV4_FOLDER}{os.path.basename(ipv4_filename)}")
+        upload_to_gcloud_and_make_public(ipv6_filename, f"{IPV6_FOLDER}{os.path.basename(ipv6_filename)}")
         
-        # Generate signed URLs for the files in the URLs folder
-        if ipv4_blob:
-            create_signed_url(ipv4_blob)
-        if ipv6_blob:
-            create_signed_url(ipv6_blob)
-        
-        logging.info("CSV files created, uploaded to GCloud bucket, and signed URLs generated.")
+        logging.info("CSV files created, uploaded to GCloud bucket, and made public.")
     else:
         handle_error("CSV Upload Failed: Could not retrieve data from the IP range source. Please check the Google Cloud IP Addresses Range Service.")
 
