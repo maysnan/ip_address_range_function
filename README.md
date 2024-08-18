@@ -1,5 +1,3 @@
-You're correct! If the variables are hardcoded in the `main.py` script, there is no need to set them as environment variables when deploying to Google Cloud Functions. Here's the updated README.md:
-
 ```markdown
 # Google Cloud IP Address Ranges Project
 
@@ -114,5 +112,3 @@ The report helps in making data-driven decisions to optimize the schedule for up
 
 MIT License
 ```
-
-This version no longer mentions the need to set environment variables during deployment to Google Cloud Functions, as the variables are now hardcoded in the `main.py` script.
