@@ -1,4 +1,3 @@
-```markdown
 # Google Cloud IP Address Ranges Project
 
 This project fetches Google IP address ranges, saves them as CSV files, and uploads them to Google Cloud Storage. It is designed for deployment using Google Cloud Functions and scheduling via Cloud Scheduler.
